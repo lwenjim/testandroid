@@ -43,7 +43,7 @@
         android:gravity="start"
         android:textColorHighlight="#cccccc"
         android:textColorHint="#ffff00"
-        android:autoLink="all"
+        android:focusable="false"
         app:layout_constraintStart_toStartOf="parent"
         android:background="@drawable/button_edge"
         tools:ignore="MissingConstraints" />

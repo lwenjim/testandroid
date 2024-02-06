@@ -1,39 +1,30 @@
 package com.example.first_android_01;
 
+import android.content.Context;
 import android.os.Bundle;
-
-import com.google.android.material.snackbar.Snackbar;
 
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.os.StrictMode;
 import android.util.Log;
+import android.view.MotionEvent;
 import android.view.View;
-
-import androidx.core.view.WindowCompat;
-import androidx.navigation.NavController;
-import androidx.navigation.Navigation;
-import androidx.navigation.ui.AppBarConfiguration;
-import androidx.navigation.ui.NavigationUI;
 
 import com.example.first_android_01.databinding.ActivityMainBinding;
 
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.Window;
-import android.view.WindowManager;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 
-import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
 
 public class MainActivity extends AppCompatActivity {
     private ActivityMainBinding binding;
@@ -41,31 +32,75 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-//        Window window = getWindow();
-//        int flag = WindowManager.LayoutParams.FLAG_FULLSCREEN;
-//        window.setFlags(flag, flag);
-
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
         setSupportActionBar(binding.toolbar);
-
         ActionBar actionBar = getSupportActionBar();
         if (actionBar != null) {
             actionBar.hide();
         }
         Button btn_add = findViewById(R.id.button);
+        EditText input = findViewById(R.id.editText);
+        EditText output = findViewById(R.id.editText2);
         btn_add.setOnClickListener(v -> {
             try {
-                EditText input = findViewById(R.id.editText);
-                EditText output = findViewById(R.id.editText2);
-                Log.d("aaa", input.getText().toString());
                 output.setText(getHtml(input.getText().toString()));
             } catch (MalformedURLException e) {
                 e.printStackTrace();
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
+            input.clearFocus();
+            HideKeyboard(input);
         });
+    }
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent ev) {
+        if (ev.getAction() == MotionEvent.ACTION_DOWN) {
+            View currentFocus = getCurrentFocus();
+            if (IsShouldHideKeyBoard(currentFocus,ev)) {
+                HideKeyboard(currentFocus);
+            }
+        }
+        return super.dispatchTouchEvent(ev);
+    }
+
+    private boolean IsShouldHideKeyBoard(View view, MotionEvent event){
+        if ((view instanceof EditText)) {
+            int[] point = {0, 0};
+            view.getLocationInWindow(point);
+            int left = point[0], top = point[1], right = left + view.getWidth(),bottom = top +view.getHeight();
+            int evX = (int)event.getRawX(), enY = (int)event.getRawY();
+            return !((left < evX && evX<=right) && (top <= enY && enY <= bottom));
+        }
+        return false;
+    }
+
+    public  void HideKeyboard(View v) {
+        InputMethodManager manager = ((InputMethodManager) getApplicationContext().getSystemService(Context.INPUT_METHOD_SERVICE));
+        if (manager != null)
+            manager.hideSoftInputFromWindow(v.getWindowToken(), InputMethodManager.HIDE_NOT_ALWAYS);
+        v.clearFocus();
+    }
+
+    public String getHtml(String requestUrl) throws IOException {
+        URL url = new URL(requestUrl);
+        StrictMode.ThreadPolicy policy=new StrictMode.ThreadPolicy.Builder().permitAll().build();
+        StrictMode.setThreadPolicy(policy);
+        HttpURLConnection urlConn = (HttpURLConnection) url.openConnection();
+        urlConn.setConnectTimeout(5 * 1000);
+        urlConn.setReadTimeout(5 * 1000);
+        urlConn.setUseCaches(true);
+        urlConn.setRequestMethod("GET");
+        urlConn.setRequestProperty("Content-Type", "application/json");
+        urlConn.addRequestProperty("Connection", "Keep-Alive");
+        urlConn.connect();
+        String result = "" ;
+        if (urlConn.getResponseCode() == 200) {
+            result = streamToString(urlConn.getInputStream());
+        }
+        urlConn.disconnect();
+        return result;
     }
 
     @Override
@@ -83,33 +118,21 @@ public class MainActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
-    public static String getHtml(String path) throws Exception {
-        URL url = new URL(path);
-        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-        conn.setRequestMethod("GET");
-        conn.setConnectTimeout(5000);
-        conn.setReadTimeout(5000);
-        InputStream inStream = conn.getInputStream();
-        byte[] data = readInputStream(inStream);
-        String html = new String(data, StandardCharsets.UTF_8);
-        return html;
-    }
-
-    /**
-     * 读取输入流，得到html的二进制数据
-     *
-     * @param inStream
-     * @return
-     * @throws Exception
-     */
-    public static byte[] readInputStream(InputStream inStream) throws Exception {
-        ByteArrayOutputStream outStream = new ByteArrayOutputStream();
-        byte[] buffer = new byte[1024];
-        int len = 0;
-        while ((len = inStream.read(buffer)) != -1) {
-            outStream.write(buffer, 0, len);
+    private static String streamToString(InputStream is) {
+        try {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            byte[] buffer = new byte[1024];
+            int len = 0;
+            while ((len = is.read(buffer)) != -1) {
+                baos.write(buffer, 0, len);
+            }
+            baos.close();
+            is.close();
+            byte[] byteArray = baos.toByteArray();
+            return new String(byteArray);
+        } catch (Exception e) {
+            Log.e("abc", e.toString());
+            return null;
         }
-        inStream.close();
-        return outStream.toByteArray();
     }
 }
