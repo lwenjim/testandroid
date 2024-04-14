@@ -45,15 +45,14 @@ public class MainActivity extends AppCompatActivity {
         btn_add.setOnClickListener(v -> {
             try {
                 output.setText(getHtml(input.getText().toString()));
-            } catch (MalformedURLException e) {
-                e.printStackTrace();
             } catch (Exception e) {
-                throw new RuntimeException(e);
+                e.printStackTrace();
             }
             input.clearFocus();
             HideKeyboard(input);
         });
     }
+
     @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
         if (ev.getAction() == MotionEvent.ACTION_DOWN) {
